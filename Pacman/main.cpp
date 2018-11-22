@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <thread>
 #include <chrono>
+#include "Console.h"
 
 char slots[28][28];
 int posX = 21;
@@ -16,6 +17,7 @@ void writeBoard();
 void setColor(int color);
 void gameloop();
 void handleInput();
+void updateScore();
 
 void movePacman();
 void moveUp();
@@ -36,7 +38,6 @@ std::string centerText(std::string input, int width);
 
 int main()
 {
-
 	RECT r;
 	HWND console = GetConsoleWindow();
 	// Resize console
@@ -48,7 +49,11 @@ int main()
 	GetWindowRect(desktop, &r);
 	SetWindowPos(console, 0, r.right / 2 - 130, r.bottom / 2 - 278, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
-	initializeBoard();
+  Console::ShowConsoleCursor(false);
+  system("cls");
+  initializeBoard();
+  writeBoard();
+  updateScore();
 
 	std::thread gameloop(gameloop);
 
@@ -62,8 +67,6 @@ void gameloop()
 {
 	while (1)
 	{
-		system("cls");
-		writeBoard();
 		handleInput();
 		movePacman();
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -84,6 +87,9 @@ void handleInput()
 
 void movePacman()
 {
+  // Delete old pacman
+  Console::WriteAt(posY, posX + 2, " ", Color::BRIGHT_WHITE);
+
 	if (direction == 0)
 		moveRight();
 	else if (direction == 1)
@@ -92,6 +98,11 @@ void movePacman()
 		moveUp();
 	else
 		moveDown();
+
+  // Add new pacman
+  Console::SetColor(Color::LIGHT_YELLOW);
+  Console::SetCursorPosition(posY, posX + 2);
+  std::cout << slots[posX][posY] << std::endl;
 }
 
 bool isSlotNotWall(int x, int y)
@@ -157,15 +168,24 @@ void moveLeft()
 
 void checkForDot()
 {
-	if (slots[posX][posY] == (char)249)
-		score++;
+  if (slots[posX][posY] == (char)249)
+  {
+    ++score;
+    updateScore();
+  }
+}
+
+void updateScore()
+{
+  Console::SetCursorPosition(0, 0);
+	setColor(7);
+	std::cout << centerText("HIGH SCORE: " + std::to_string(score), 30) << std::endl;
 }
 
 void writeBoard()
 {
-	setColor(7);
-	std::cout << centerText("HIGH SCORE: " + std::to_string(score), 30) << std::endl;
-
+  Console::SetCursorPosition(0, 0);
+  std::cout << '\n';
 	setColor(1); // Blue
 
 	// Top row
@@ -183,9 +203,9 @@ void writeBoard()
 		for (unsigned int column = 0; column < 28; column++)
 		{
 			// Make the dots/food a color, Pac-Man yellow, and the walls blue
-			if (slots[row][column] == '<' || slots[row][column] == '>' || slots[row][column] == '^' || slots[row][column] == 'v')
-				setColor(14);
-			else if (slots[row][column] == (char)249)
+      /*if (slots[row][column] == '<' || slots[row][column] == '>' || slots[row][column] == '^' || slots[row][column] == 'v')
+        setColor(14);*/
+			if (slots[row][column] == (char)249)
 				setColor(7);
 			else if (row == 11 && (column == 13 || column == 14))
 				setColor(13);
@@ -205,7 +225,7 @@ void writeBoard()
 	std::cout << std::endl;
 
 	setColor(7);
-	std::cout << "(" << posX << ", " << posY << ")";
+	//std::cout << "(" << posX << ", " << posY << ")";
 }
 
 void setColor(int color)
