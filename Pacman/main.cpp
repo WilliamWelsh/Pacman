@@ -1,13 +1,12 @@
 #include <iostream>
-#include <string>
 #include <time.h>
 #include <Windows.h>
 #include <thread>
 #include <chrono>
 #include "Console.h"
 
-char slots[28][28];
-int posX = 21;
+char slots[29][28];
+int posX = 22;
 int posY = 13;
 int score = 0;
 
@@ -29,18 +28,16 @@ void checkForDot();
 
 void initializeBoard();
 
-void drawRectangle(int row, int pos, int width, int height);
 void drawT(int row);
+void drawRectangle(int row, int pos, int width, int height);
 
 bool isSlotNotWall(int x, int y);
 
-std::string centerText(std::string input, int width);
-
 int main()
 {
+	// Resize console
 	RECT r;
 	HWND console = GetConsoleWindow();
-	// Resize console
 	GetWindowRect(console, &r);
 	MoveWindow(console, r.left, r.top, 260, 555, TRUE);
 
@@ -49,14 +46,15 @@ int main()
 	GetWindowRect(desktop, &r);
 	SetWindowPos(console, 0, r.right / 2 - 130, r.bottom / 2 - 278, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
-  Console::ShowConsoleCursor(false);
-  system("cls");
-  initializeBoard();
-  writeBoard();
-  updateScore();
+	// Set up the game
+	Console::ShowConsoleCursor(false);
+	system("cls");
+	initializeBoard();
+	writeBoard();
+	updateScore();
 
+	// Start the game and wait for it to end
 	std::thread gameloop(gameloop);
-
 	gameloop.join();
 
 	std::cin.ignore();
@@ -65,7 +63,7 @@ int main()
 
 void gameloop()
 {
-	while (1)
+	while (1) // TODO Add a win condition
 	{
 		handleInput();
 		movePacman();
@@ -75,13 +73,13 @@ void gameloop()
 
 void handleInput()
 {
-	if (GetAsyncKeyState(VK_RIGHT) && 0x8000)
+	if (GetAsyncKeyState(VK_RIGHT) && 0x8000 || GetAsyncKeyState('D') && 0x8000)
 		direction = 0;
-	else if (GetAsyncKeyState(VK_LEFT) && 0x8000)
+	else if (GetAsyncKeyState(VK_LEFT) && 0x8000 || GetAsyncKeyState('A') && 0x8000)
 		direction = 1;
-	else if (GetAsyncKeyState(VK_UP) && 0x8000)
+	else if (GetAsyncKeyState(VK_UP) && 0x8000 || GetAsyncKeyState('W') && 0x8000)
 		direction = 2;
-	else if (GetAsyncKeyState(VK_DOWN) && 0x8000)
+	else if (GetAsyncKeyState(VK_DOWN) && 0x8000 || GetAsyncKeyState('S') && 0x8000)
 		direction = 3;
 }
 
@@ -107,44 +105,42 @@ void movePacman()
 
 bool isSlotNotWall(int x, int y)
 {
-	return (slots[x][y] == ' ' || slots[x][y] == (char)249);
+	return (slots[x][y] == ' ' || slots[x][y] == (char)249 || slots[x][y] == 'o');
+}
+
+// Set the current slot to a space
+// then adjust either x or y (int &var + int toAdd)
+// then check for a dot/update score
+// then set Pacmans to char to something like ^,v,<,>
+void adjustSlots(int &var, int toAdd, char newChar)
+{
+	slots[posX][posY] = ' ';
+	var += toAdd;
+	checkForDot();
+	slots[posX][posY] = newChar;
 }
 
 void moveUp()
 {
 	if (isSlotNotWall(posX-1, posY))
-	{
-		slots[posX][posY] = ' ';
-		posX--;
-		checkForDot();
-		slots[posX][posY] = 'v';
-	}
+		adjustSlots(posX, -1, 'v');
 }
 
 void moveDown()
 {
 	if (isSlotNotWall(posX+1, posY))
-	{
-		slots[posX][posY] = ' ';
-		posX++;
-		checkForDot();
-		slots[posX][posY] = '^';
-	}
+		adjustSlots(posX, 1, '^');
 }
 
 void moveRight()
 {
 	if (isSlotNotWall(posX, posY+1))
-	{
-		slots[posX][posY] = ' ';
-		posY++;
-		checkForDot();
-		slots[posX][posY] = '<';
-	}
-	else if (posX == 13 && posY == 27)
+		adjustSlots(posY, 1, '<');
+	else if (posX == 13 && posY == 27) // Go in the middle right and come out through the left
 	{
 		slots[posX][posY] = ' ';
 		posY = 0;
+		checkForDot();
 		slots[posX][posY] = '<';
 	}
 }
@@ -152,12 +148,8 @@ void moveRight()
 void moveLeft()
 {
 	if (isSlotNotWall(posX, posY-1))
-	{
-		slots[posX][posY] = ' ';
-		posY--;
-		slots[posX][posY] = '>';
-	}
-	else if (posX == 13 && posY == 0)
+		adjustSlots(posY, -1, '>');
+	else if (posX == 13 && posY == 0) // Go in the middle left and come out through the right
 	{
 		slots[posX][posY] = ' ';
 		posY = 27;
@@ -168,24 +160,29 @@ void moveLeft()
 
 void checkForDot()
 {
-  if (slots[posX][posY] == (char)249)
-  {
-    ++score;
-    updateScore();
-  }
+	if (slots[posX][posY] == (char)249)
+	{
+		score += 10;
+		updateScore();
+	}
+	else if (slots[posX][posY] == 'o')
+	{
+		score += 50;
+		updateScore();
+	}
 }
 
 void updateScore()
 {
-  Console::SetCursorPosition(0, 0);
+	Console::SetCursorPosition(0, 0);
 	setColor(7);
-	std::cout << centerText("HIGH SCORE: " + std::to_string(score), 30) << std::endl;
+	std::cout << "HIGH SCORE: " << score << std::endl;
 }
 
 void writeBoard()
 {
-  Console::SetCursorPosition(0, 0);
-  std::cout << '\n';
+	Console::SetCursorPosition(0, 0);
+	std::cout << '\n';
 	setColor(1); // Blue
 
 	// Top row
@@ -198,14 +195,12 @@ void writeBoard()
 	std::cout << (char)187;
 	std::cout << std::endl;
 
-	for (unsigned int row = 0; row < 28; row++)
+	for (unsigned int row = 0; row < 29; row++)
 	{
 		for (unsigned int column = 0; column < 28; column++)
 		{
 			// Make the dots/food a color, Pac-Man yellow, and the walls blue
-      /*if (slots[row][column] == '<' || slots[row][column] == '>' || slots[row][column] == '^' || slots[row][column] == 'v')
-        setColor(14);*/
-			if (slots[row][column] == (char)249)
+			if (slots[row][column] == (char)249 || slots[row][column] == 'o')
 				setColor(7);
 			else if (row == 11 && (column == 13 || column == 14))
 				setColor(13);
@@ -213,7 +208,6 @@ void writeBoard()
 				setColor(1);
 			std::cout << slots[row][column];
 		}
-		//setColor(1); // Blue
 		std::cout << std::endl;
 	}
 
@@ -223,19 +217,11 @@ void writeBoard()
 		std::cout << (char)205;
 	std::cout << (char)188;
 	std::cout << std::endl;
-
-	setColor(7);
-	//std::cout << "(" << posX << ", " << posY << ")";
 }
 
 void setColor(int color)
 {
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
-}
-
-std::string centerText(std::string input, int width)
-{
-	return std::string((width - input.length()) / 2, ' ') + input;
 }
 
 void drawRectangle(int row, int pos, int width, int height)
@@ -244,13 +230,13 @@ void drawRectangle(int row, int pos, int width, int height)
 	slots[row][pos + width + 1] = 191; // Top right corner
 	slots[row + height + 1][pos] = 192; // Bottom left corner
 	slots[row + height + 1][pos + width + 1] = 217; // Bottom right corner
-
+	// Make the "-'s (width)
 	for (int x = 1; x < width + 1; x++)
 	{
 		slots[row][pos + x] = 196;
 		slots[row + height + 1][pos + x] = 196;
 	}
-
+	// Make the '|'s (height)
 	for (int y = 1; y < height + 1; y++)
 	{
 		slots[row + y][pos] = 179;
@@ -266,8 +252,7 @@ void drawT(int row)
 	slots[row][17] = 191; // Top right corner
 	slots[row + 1][10] = 192; // Bottom left corner
 	slots[row + 1][17] = 217; // Bottom right corner
-
-							  // Top of the T
+	// Top of the T
 	for (int i = 1; i < 7; i++)
 		slots[row][10 + i] = 196;
 	// Bottom parts
@@ -284,12 +269,14 @@ void drawT(int row)
 	slots[row + 3][14] = 217;
 }
 
+// Build the map
 void initializeBoard()
 {
-	// Build board and map
-	for (unsigned int row = 0; row < 28; row++)
+	// Initialize the array with dots (food things)
+	for (unsigned int row = 0; row < 29; row++)
 		for (unsigned int column = 0; column < 28; column++)
 			slots[row][column] = 249;
+	// Draw some of the vertical edges
 	for (int i = 0; i < 8; i++)
 	{
 		slots[i][0] = 186;
@@ -368,12 +355,28 @@ void initializeBoard()
 		slots[i + 19][27] = 186;
 		slots[i + 25][0] = 186;
 		slots[i + 25][27] = 186;
+		
+		// Remove dots inside boxes
+		slots[2][i + 8] = ' ';
+		slots[2][i + 17] = ' ';
+		slots[12][i + 11] = ' ';
+		slots[12][i + 14] = ' ';
+		slots[13][i + 11] = ' ';
+		slots[13][i + 14] = ' ';
+		slots[14][i + 11] = ' ';
+		slots[14][i + 14] = ' ';
 	}
+	slots[2][3] = ' ';
+	slots[2][4] = ' ';
+	slots[2][23] = ' ';
+	slots[2][24] = ' ';
 	slots[12][5] = 188;
 	slots[12][22] = 200;
 	slots[18][5] = 188;
 	slots[22][0] = 186;
 	slots[22][27] = 186;
+	slots[28][0] = 186;
+	slots[28][27] = 186;
 
 	for (int row = 0; row < 3; row++)
 		for (int column = 0; column < 5; column++)
@@ -391,21 +394,85 @@ void initializeBoard()
 		slots[14][i] = 205;
 		slots[14][23 + i] = 205;
 		slots[12][23 + i] = 205;
+		slots[11+i][9] = ' ';
+		slots[11+i][18] = ' ';
 	}
 	slots[14][22] = 201;
 	slots[13][5] = ' ';
 	slots[13][22] = ' ';
 	slots[14][5] = 187;
+	// Get rid of SOME dots (center area)
+	for (int i = 0; i < 10; i++)
+	{
+		slots[10][9 + i] = ' ';
+		slots[16][9 + i] = ' ';
+	}
+	for (int i = 0; i < 2; i++)
+	{
+		slots[8 + i][12] = ' ';
+		slots[8 + i][15] = ' ';
+		slots[9][13+i] = ' ';
+		slots[13][7 + i] = ' ';
+		slots[13][19 + i] = ' ';
+		slots[17 + i][9] = ' ';
+		slots[17 + i][18] = ' ';
+	}
 
 	// Bottom indents
 	slots[23][0] = 200;
-	slots[23][1] = 187;
+	slots[23][1] = 205;
+	slots[23][2] = 187;
 	slots[24][0] = 201;
-	slots[24][1] = 188;
-	slots[23][26] = 201;
+	slots[24][1] = 205;
+	slots[24][2] = 188;
+	slots[23][25] = 201;
+	slots[23][26] = 205;
 	slots[23][27] = 188;
-	slots[24][26] = 200;
+	slots[24][25] = 200;
+	slots[24][26] = 205;
 	slots[24][27] = 187;
+
+	// First 'E'/F Thing
+	drawRectangle(5, 7, 0, 6);
+	drawRectangle(8, 8, 2, 0);
+	slots[8][8] = 192;
+	slots[9][8] = 218;
+
+	// Second 'E'/F Thing
+	drawRectangle(5, 19, 0, 6);
+	drawRectangle(8, 16, 2, 0);
+	slots[8][19] = 217;
+	slots[9][19] = 191;
+
+	// First L
+	drawRectangle(20, 4, 0, 3);
+	drawRectangle(20, 2, 2, 0);
+	slots[21][4] = 191;
+	slots[21][5] = 179;
+
+	// Second L
+	drawRectangle(20, 22, 0, 3);
+	drawRectangle(20, 22, 2, 0);
+	slots[21][22] = 179;
+	slots[21][23] = 218;
+	
+	// First very bottom thing (not T)
+	drawRectangle(23, 7, 0, 2);
+	drawRectangle(26, 2, 8, 0);
+	slots[26][7] = 217;
+	slots[26][8] = 192;
+
+	// Second very bottom thing (not T)
+	drawRectangle(23, 19, 0, 2);
+	drawRectangle(26, 16, 8, 0);
+	slots[26][19] = 217;
+	slots[26][20] = 192;
+
+	// Place bigger dots
+	slots[3][1] = 'o';
+	slots[3][26] = 'o';
+	slots[22][1] = 'o';
+	slots[22][26] = 'o';
 
 	// Place Pac-Man
 	slots[posX][posY] = '<';
