@@ -1,9 +1,9 @@
 #include <iostream>
-#include <time.h>
-#include <Windows.h>
+#include <time.h> // not sure what I used this for lol
+#include <Windows.h> // For colors n stuff
 #include <thread>
-#include <chrono>
-#include "Console.h"
+#include <chrono> // time be iike
+#include "Console.h" // Useful commands for console manipulation thanks to my boy Krystian
 
 char slots[29][28];
 int posX = 22;
@@ -33,6 +33,14 @@ void drawRectangle(int row, int pos, int width, int height);
 
 bool isSlotNotWall(int x, int y);
 
+struct ghost { int x; int y; int color; int direction = 0; }; // 0 = right, 1 = left, 2 = up, 3 = down
+
+ghost spawnGhost();
+void moveGhost(ghost& ghost);
+ghost mainghost;
+
+void moveTo(ghost& ghost, int x, int y);
+
 int main()
 {
 	// Resize console
@@ -50,6 +58,7 @@ int main()
 	Console::ShowConsoleCursor(false);
 	system("cls");
 	initializeBoard();
+	mainghost = spawnGhost();
 	writeBoard();
 	updateScore();
 
@@ -67,8 +76,100 @@ void gameloop()
 	{
 		handleInput();
 		movePacman();
+		moveGhost(mainghost);
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	};
+}
+
+ghost spawnGhost()
+{
+	ghost ghost;
+	ghost.x = 10;
+	ghost.y = 14;
+	ghost.color = 12;
+	return ghost;
+}
+
+void moveGhost(ghost& ghost)
+{
+	// Delete ghost
+	Console::WriteAt(ghost.y, ghost.x + 2, " ", Color::RED);
+
+	/*if (isSlotNotWall(ghost.x, ghost.y + 1))
+	{
+		slots[ghost.x][ghost.y] = ' ';
+		ghost.y += 1;
+		slots[ghost.x][ghost.y] = 254;
+	}*/
+
+	moveTo(ghost, 13, 21);
+
+	// Add new ghost
+	Console::SetColor(Color::RED);
+	Console::SetCursorPosition(ghost.y, ghost.x + 2);
+	std::cout << (char)254 << std::endl;
+}
+
+void moveTo(ghost& ghost, int x, int y)
+{
+	// 0 = right, 1 = left, 2 = up, 3 = down
+	// Move right
+	if (ghost.x == x && ghost.y == y) return;
+	if (ghost.direction == 0)
+	{
+		if (isSlotNotWall(ghost.x, ghost.y + 1))
+		{
+			slots[ghost.x][ghost.y] = ' ';
+			ghost.y += 1;
+			slots[ghost.x][ghost.y] = 254;
+		}
+		else
+		{
+			if (ghost.x > x)
+			{
+				if (isSlotNotWall(ghost.x + 1, ghost.y))
+				{
+					ghost.direction = 3;
+				}
+			}
+			else
+			{
+				if (isSlotNotWall(ghost.x - 1, ghost.y))
+				{
+					ghost.direction = 2;
+				}
+				else
+					ghost.direction = 3;
+			}
+		}
+	}
+	
+	if (ghost.direction == 2)
+	{
+		if (isSlotNotWall(ghost.x - 1, ghost.y))
+		{
+			slots[ghost.x][ghost.y] = ' ';
+			ghost.x -= 1;
+			slots[ghost.x][ghost.y] = 254;
+		}
+	}
+
+	// Going down
+	if (ghost.direction == 3)
+	{
+		if (ghost.y < y && isSlotNotWall(ghost.x, ghost.y + 1))
+		{
+			ghost.direction = 0;
+			moveTo(ghost, x, y);
+		}
+		else if (isSlotNotWall(ghost.x + 1, ghost.y))
+		{
+			slots[ghost.x][ghost.y] = ' ';
+			ghost.x += 1;
+			slots[ghost.x][ghost.y] = 254;
+		}
+	}
+
 }
 
 void handleInput()
@@ -85,8 +186,8 @@ void handleInput()
 
 void movePacman()
 {
-  // Delete old pacman
-  Console::WriteAt(posY, posX + 2, " ", Color::BRIGHT_WHITE);
+	// Delete old pacman
+	Console::WriteAt(posY, posX + 2, " ", Color::BRIGHT_WHITE);
 
 	if (direction == 0)
 		moveRight();
@@ -97,10 +198,10 @@ void movePacman()
 	else
 		moveDown();
 
-  // Add new pacman
-  Console::SetColor(Color::LIGHT_YELLOW);
-  Console::SetCursorPosition(posY, posX + 2);
-  std::cout << slots[posX][posY] << std::endl;
+	// Add new pacman
+	Console::SetColor(Color::LIGHT_YELLOW);
+	Console::SetCursorPosition(posY, posX + 2);
+	std::cout << slots[posX][posY] << std::endl;
 }
 
 bool isSlotNotWall(int x, int y)
